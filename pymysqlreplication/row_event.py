@@ -453,7 +453,7 @@ class DeleteRowsEvent(RowsEvent):
         for row in self.rows:
             print("--")
             for key in row["values"]:
-                print("*", key, ":", row["values"][key])
+                print("*%s:%s" % (key, row["values"][key]))
 
 
 class WriteRowsEvent(RowsEvent):
