@@ -481,7 +481,7 @@ class WriteRowsEvent(RowsEvent):
         for row in self.rows:
             print("--")
             for key in row["values"]:
-                print("*", key, ":", row["values"][key])
+                print("*%s:%s" % (key, row["values"][key]))
 
 
 class UpdateRowsEvent(RowsEvent):
@@ -593,7 +593,7 @@ class TableMapEvent(BinLogEvent):
 
                     # only acknowledge the column definition if the iteration matches with ordinal position of
                     # the column. this helps in maintaining support for restricted columnar access
-                    if i != (column_schema['ORDINAL_POSITION'] - 1):
+                    if i != (int(column_schema['ORDINAL_POSITION']) - 1):
                         # raise IndexError to follow the workflow of dropping columns which are not matching the
                         # underlying table schema
                         raise IndexError

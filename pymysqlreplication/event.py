@@ -41,7 +41,7 @@ class BinLogEvent(object):
         print("Event size: %d" % (self.event_size))
         print("Read bytes: %d" % (self.packet.read_bytes))
         self._dump()
-        print()
+        print("")
 
     def _dump(self):
         """Core data dumped for the event"""
@@ -95,7 +95,7 @@ class RotateEvent(BinLogEvent):
         print("=== %s ===" % (self.__class__.__name__))
         print("Position: %d" % self.position)
         print("Next binlog file: %s" % self.next_binlog)
-        print()
+        print("")
 
 
 class FormatDescriptionEvent(BinLogEvent):
