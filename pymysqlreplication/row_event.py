@@ -629,3 +629,39 @@ class TableMapEvent(BinLogEvent):
         print("Schema: %s" % (self.schema))
         print("Table: %s" % (self.table))
         print("Columns: %s" % (self.column_count))
+
+
+class AnnotateRowsEvent(BinLogEvent):
+    def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
+        super(AnnotateRowsEvent, self).__init__(from_packet, event_size, table_map,
+                                                ctl_connection, **kwargs)
+
+        self.query = self.packet.read(event_size).decode("utf-8")
+
+    def _dump(self):
+        super(AnnotateRowsEvent, self)._dump()
+        print("Query: %s" % (self.query))
+
+
+class WriteRowsCompressedEventV1(BinLogEvent):
+    pass
+
+
+class UpdateRowsCompressedEventV1(BinLogEvent):
+    pass
+
+
+class DeleteRowsCompressedEventV1(BinLogEvent):
+    pass
+
+
+class WriteRowsCompressedEvent(BinLogEvent):
+    pass
+
+
+class UpdateRowsCompressedEvent(BinLogEvent):
+    pass
+
+
+class DeleteRowsCompressedEvent(BinLogEvent):
+    pass

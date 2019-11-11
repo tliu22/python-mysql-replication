@@ -271,6 +271,45 @@ class IntvarEvent(BinLogEvent):
         print("Value: %d" % (self.value))
 
 
+class AnonymousGTIDLogEvent(BinLogEvent):
+    pass
+
+
+class PreviousGTIDsLogEvent(BinLogEvent):
+    pass
+
+
+class TransactionContextEvent(BinLogEvent):
+    pass
+
+
+class ViewChangeEvent(BinLogEvent):
+    pass
+
+
+class XAPrepareLogEvent(BinLogEvent):
+    pass
+
+class BinlogCheckpointEvent(BinLogEvent):
+    pass
+
+
+class GTIDEvent(BinLogEvent):
+    pass
+
+
+class GTIDListEvent(BinLogEvent):
+    pass
+
+
+class StartEncryptionEvent(BinLogEvent):
+    pass
+
+
+class QueryCompressedEvent(BinLogEvent):
+    pass
+
+
 class NotImplementedEvent(BinLogEvent):
     def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
         super(NotImplementedEvent, self).__init__(
