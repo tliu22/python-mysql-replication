@@ -99,8 +99,21 @@ class RotateEvent(BinLogEvent):
 
 
 class FormatDescriptionEvent(BinLogEvent):
-    pass
+    def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
+        super(FormatDescriptionEvent, self).__init__(from_packet, event_size, table_map,
+                                                ctl_connection, **kwargs)
 
+        self.format = self.packet.read_uint_by_size(2)
+        self.server_version = self.packet.read(50).decode()
+        self.timestamp = self.packet.read_uint_by_size(4)
+        self.header_len = self.packet.read_uint_by_size(1)
+
+    def _dump(self):
+        super(FormatDescriptionEvent, self)._dump()
+        print("Format: %d" % (self.format))
+        print("Server version: %s" % (self.server_version))
+        print("Timestamp: %s" % (datetime.datetime.fromtimestamp(self.timestamp).isoformat()))
+        print("Header length: %d" % (self.header_len))
 
 class StopEvent(BinLogEvent):
     pass
@@ -290,23 +303,60 @@ class ViewChangeEvent(BinLogEvent):
 class XAPrepareLogEvent(BinLogEvent):
     pass
 
-class BinlogCheckpointEvent(BinLogEvent):
+
+class MariaBinlogCheckpointEvent(BinLogEvent):
+    def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
+        super(MariaBinlogCheckpointEvent, self).__init__(from_packet, event_size, table_map,
+                                                ctl_connection, **kwargs)
+
+        self.filename = self.packet.read(event_size).decode("utf-8")
+
+    def _dump(self):
+        super(MariaBinlogCheckpointEvent, self)._dump()
+        print("Filename: %s" % (self.filename))
+
+
+class MariaGtidEvent(BinLogEvent):
+    def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
+        super(MariaGtidEvent, self).__init__(from_packet, event_size, table_map,
+                                                ctl_connection, **kwargs)
+
+        self.sequence_nr = self.packet.read_uint_by_size(8)
+        self.domain_id = self.packet.read_uint_by_size(4)
+
+    def _dump(self):
+        super(MariaGtidEvent, self)._dump()
+        print("Sequence number: %s" % (self.sequence_nr))
+        print("Domain ID: %d" % (self.domain_id))
+
+
+class MariaGtidListEvent(BinLogEvent):
+    def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
+        super(MariaGtidListEvent, self).__init__(from_packet, event_size, table_map,
+                                                ctl_connection, **kwargs)
+
+        self.gtid_count = self.packet.read_uint_by_size(4)
+        self.gtids = []
+        for _ in range(self.gtid_count):
+            domain_id = self.packet.read_uint_by_size(4)
+            server_id = self.packet.read_uint_by_size(4)
+            sequence_nr = self.packet.read_uint_by_size(8)
+            self.gtids.append((domain_id, server_id, sequence_nr))
+
+    def _dump(self):
+        super(MariaGtidListEvent, self)._dump()
+        print("GTID count: %d" % (self.gtid_count))
+        print("GTIDs:")
+        print("--")
+        for gtid in self.gtids:
+            print('*%d-%d-%d' % (gtid[0], gtid[1], gtid[2]))
+
+
+class MariaStartEncryptionEvent(BinLogEvent):
     pass
 
 
-class GTIDEvent(BinLogEvent):
-    pass
-
-
-class GTIDListEvent(BinLogEvent):
-    pass
-
-
-class StartEncryptionEvent(BinLogEvent):
-    pass
-
-
-class QueryCompressedEvent(BinLogEvent):
+class MariaQueryCompressedEvent(BinLogEvent):
     pass
 
 
