@@ -5,6 +5,7 @@ import decimal
 import datetime
 import json
 
+from collections import OrderedDict
 from pymysql.util import byte2int
 from pymysql.charset import charset_to_encoding
 
@@ -15,6 +16,13 @@ from .constants import BINLOG
 from .column import Column
 from .table import Table
 from .bitmap import BitCount, BitGet
+
+def json_serializable(obj):
+    try:
+        json.dumps(obj)
+        return True
+    except:
+        return False
 
 class RowsEvent(BinLogEvent):
     def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
@@ -451,9 +459,11 @@ class DeleteRowsEvent(RowsEvent):
         super(DeleteRowsEvent, self)._dump()
         print("Values:")
         for row in self.rows:
+            json_row = {}
+            for key, val in row["values"].items():
+                json_row[key] = val if json_serializable(val) else str(val)
             print("--")
-            for key in row["values"]:
-                print("*%s:%s" % (key, row["values"][key]))
+            print(json.dumps(json_row, indent=2))
 
 
 class WriteRowsEvent(RowsEvent):
@@ -479,9 +489,11 @@ class WriteRowsEvent(RowsEvent):
         super(WriteRowsEvent, self)._dump()
         print("Values:")
         for row in self.rows:
+            json_row = {}
+            for key, val in row["values"].items():
+                json_row[key] = val if json_serializable(val) else str(val)
             print("--")
-            for key in row["values"]:
-                print("*%s:%s" % (key, row["values"][key]))
+            print(json.dumps(json_row, indent=2))
 
 
 class UpdateRowsEvent(RowsEvent):
@@ -515,15 +527,23 @@ class UpdateRowsEvent(RowsEvent):
 
     def _dump(self):
         super(UpdateRowsEvent, self)._dump()
-        print("Affected columns: %d" % self.number_of_columns)
         print("Values:")
         for row in self.rows:
-            print("--")
+            json_row = OrderedDict()
+            unchanged_keys = {}
             for key in row["before_values"]:
                 before_val = row["before_values"][key]
                 after_val = row["after_values"][key]
                 if before_val != after_val:
-                    print("*%s:%s=>%s" % (key, before_val, after_val))
+                    json_row[key] = \
+                        {"before": before_val if json_serializable(before_val) else str(before_val),
+                         "after": after_val if json_serializable(after_val) else str(after_val)}
+                else:
+                    unchanged_keys[key] = before_val if json_serializable(before_val) else str(before_val)
+            for unchanged_key in unchanged_keys:
+                json_row[unchanged_key] = unchanged_keys[unchanged_key]
+            print("--")
+            print(json.dumps(json_row, indent=2))
 
 
 class TableMapEvent(BinLogEvent):
