@@ -353,7 +353,20 @@ class MariaGtidListEvent(BinLogEvent):
 
 
 class MariaStartEncryptionEvent(BinLogEvent):
-    pass
+    def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
+        super(MariaStartEncryptionEvent, self).__init__(from_packet, event_size, table_map,
+                                                        ctl_connection, **kwargs)
+
+        self.scheme = self.packet.read_uint_by_size(1)
+        self.key_version = self.packet.read_uint_by_size(4)
+        self.nonce = self.packet.read(event_size - 5)
+
+    def _dump(self):
+        super(MariaStartEncryptionEvent, self)._dump()
+        print("Scheme: %d" % self.scheme)
+        print("Key version: %d"  % self.key_version)
+        print("Nonce length: %d" % len(self.nonce))
+        print("Nonce: 0x%s" % binascii.hexlify(self.nonce))
 
 
 class MariaQueryCompressedEvent(BinLogEvent):
