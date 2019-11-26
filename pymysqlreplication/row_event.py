@@ -520,9 +520,10 @@ class UpdateRowsEvent(RowsEvent):
         for row in self.rows:
             print("--")
             for key in row["before_values"]:
-                print("*%s:%s=>%s" % (key,
-                                      row["before_values"][key],
-                                      row["after_values"][key]))
+                before_val = row["before_values"][key]
+                after_val = row["after_values"][key]
+                if before_val != after_val:
+                    print("*%s:%s=>%s" % (key, before_val, after_val))
 
 
 class TableMapEvent(BinLogEvent):
