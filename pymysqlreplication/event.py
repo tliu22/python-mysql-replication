@@ -378,3 +378,7 @@ class NotImplementedEvent(BinLogEvent):
         super(NotImplementedEvent, self).__init__(
             from_packet, event_size, table_map, ctl_connection, **kwargs)
         self.packet.advance(event_size)
+
+    def _dump(self):
+        super(NotImplementedEvent, self)._dump()
+        print("Event type: %d" % self.event_type)
