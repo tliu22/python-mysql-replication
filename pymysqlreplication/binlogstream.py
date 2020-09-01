@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import pymysql
 import struct
 
@@ -7,7 +8,7 @@ from pymysql.constants.COMMAND import COM_BINLOG_DUMP, COM_REGISTER_SLAVE
 from pymysql.cursors import DictCursor
 from pymysql.util import int2byte
 
-from .packet import BinLogPacketWrapper
+from .packet import BinLogPacketWrapper, OfflineBinLogPacketWrapper
 from .constants.BINLOG import TABLE_MAP_EVENT, ROTATE_EVENT
 from .gtid import GtidSet
 from .event import (
@@ -566,6 +567,27 @@ class BinLogStreamReader(object):
                     continue
                 else:
                     raise error
+
+    def __iter__(self):
+        return iter(self.fetchone, None)
+
+
+class BinLogFileReader(object):
+    def __init__(self, binlog_filename, use_checksum=True):
+        self.use_checksum = use_checksum
+        self.binlog = open(binlog_filename, 'rb')
+        # Binlog file header: https://dev.mysql.com/doc/internals/en/binlog-file-header.html
+        file_header = self.binlog.read(4)
+        if file_header != b'\xfebin':
+            raise ValueError('Binlog missing valid file header')
+
+    def fetchone(self):
+        packet = OfflineBinLogPacketWrapper(self.binlog, self.use_checksum)
+        if packet.log_pos >= os.path.getsize(self.binlog.name):
+            self.binlog.close()
+            return None
+        self.binlog.seek(packet.log_pos)
+        return packet.event
 
     def __iter__(self):
         return iter(self.fetchone, None)

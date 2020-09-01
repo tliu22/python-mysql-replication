@@ -59,8 +59,7 @@ class BinLogPacketWrapper(object):
     to the original packet objects variables and methods.
     """
 
-    __event_map = {
-        # event
+    _event_map = {
         constants.QUERY_EVENT: event.QueryEvent,
         constants.ROTATE_EVENT: event.RotateEvent,
         constants.FORMAT_DESCRIPTION_EVENT: event.FormatDescriptionEvent,
@@ -79,10 +78,25 @@ class BinLogPacketWrapper(object):
         constants.WRITE_ROWS_EVENT_V2: row_event.WriteRowsEvent,
         constants.DELETE_ROWS_EVENT_V2: row_event.DeleteRowsEvent,
         constants.TABLE_MAP_EVENT: row_event.TableMapEvent,
-        #5.6 GTID enabled replication events
-        constants.ANONYMOUS_GTID_LOG_EVENT: event.NotImplementedEvent,
-        constants.PREVIOUS_GTIDS_LOG_EVENT: event.NotImplementedEvent
-
+        # 5.6 GTID enabled replication events
+        constants.ANONYMOUS_GTID_LOG_EVENT: event.AnonymousGTIDLogEvent,
+        constants.PREVIOUS_GTIDS_LOG_EVENT: event.PreviousGTIDsLogEvent,
+        # additionals events
+        constants.TRANSACTION_CONTEXT_EVENT: event.TransactionContextEvent,
+        constants.VIEW_CHANGE_EVENT: event.ViewChangeEvent,
+        constants.XA_PREPARE_LOG_EVENT: event.XAPrepareLogEvent,
+        constants.MARIA_ANNOTATE_ROWS_EVENT: event.MariaAnnotateRowsEvent,
+        constants.MARIA_BINLOG_CHECKPOINT_EVENT: event.MariaBinlogCheckpointEvent,
+        constants.MARIA_GTID_EVENT: event.MariaGtidEvent,
+        constants.MARIA_GTID_LIST_EVENT: event.MariaGtidListEvent,
+        constants.MARIA_START_ENCRYPTION_EVENT: event.MariaStartEncryptionEvent,
+        constants.MARIA_QUERY_COMPRESSED_EVENT: event.MariaQueryCompressedEvent,
+        constants.MARIA_WRITE_ROWS_COMPRESSED_EVENT_V1: event.MariaWriteRowsCompressedEventV1,
+        constants.MARIA_UPDATE_ROWS_COMPRESSED_EVENT_V1: event.MariaUpdateRowsCompressedEventV1,
+        constants.MARIA_DELETE_ROWS_COMPRESSED_EVENT_V1: event.MariaDeleteRowsCompressedEventV1,
+        constants.MARIA_WRITE_ROWS_COMPRESSED_EVENT: event.MariaWriteRowsCompressedEvent,
+        constants.MARIA_UPDATE_ROWS_COMPRESSED_EVENT: event.MariaUpdateRowsCompressedEvent,
+        constants.MARIA_DELETE_ROWS_COMPRESSED_EVENT: event.MariaDeleteRowsCompressedEvent
     }
 
     def __init__(self, from_packet, table_map, ctl_connection, use_checksum,
@@ -125,7 +139,7 @@ class BinLogPacketWrapper(object):
             event_size_without_header = self.event_size - 19
 
         self.event = None
-        event_class = self.__event_map.get(self.event_type, event.NotImplementedEvent)
+        event_class = self._event_map.get(self.event_type, event.NotImplementedEvent)
 
         if event_class not in allowed_events:
             return
@@ -463,3 +477,64 @@ class BinLogPacketWrapper(object):
             return self.read_binary_json_type(x[0], length)
 
         return [_read(x) for x in values_type_offset_inline]
+
+
+class OfflineBinLogPacketWrapper(BinLogPacketWrapper):
+    def __init__(self, binlog, use_checksum):
+        self.read_bytes = 0  # -1 because we ignore the ok byte
+        self.__data_buffer = b''  # Used when we want to override a value in the data buffer
+
+        # Binlog event header: https://dev.mysql.com/doc/internals/en/event-header-fields.html
+        event_header = binlog.read(19)
+        unpack = struct.unpack('<IcIIIH', event_header)
+        self.timestamp = unpack[0]
+        self.event_type = byte2int(unpack[1])
+        self.server_id = unpack[2]
+        self.event_size = unpack[3]
+        self.log_pos = unpack[4]  # Position of the next event
+        self.flags = unpack[5]
+
+        # MySQL 5.6 and more if binlog-checksum = CRC32
+        event_body_size = self.event_size - 23 if use_checksum else self.event_size - 19
+
+        self._event_body = binlog.read(event_body_size)
+        self._event_body_pos = 0
+
+        event_class = self._event_map.get(self.event_type, event.NotImplementedEvent)
+        self.event = event_class(self, event_body_size, {}, None, only_tables=[], ignored_tables=[], only_schemas=[],
+                                 ignored_schemas=[], freeze_schema=[])
+
+    @property
+    def packet(self):
+        return self
+
+    def read_event_body(self, size):
+        read_bytes = self._event_body[self._event_body_pos: self._event_body_pos + size]
+        self._event_body_pos += size
+        return read_bytes
+
+    def advance_event_body(self, size):
+        self._event_body_pos += size
+
+    def read(self, size):
+        size = int(size)
+        self.read_bytes += size
+        if len(self.__data_buffer) > 0:
+            data = self.__data_buffer[:size]
+            self.__data_buffer = self.__data_buffer[size:]
+            if len(data) == size:
+                return data
+            else:
+                return data + self.read_event_body(size - len(data))
+        return self.read_event_body(size)
+
+    def advance(self, size):
+        size = int(size)
+        self.read_bytes += size
+        buffer_len = len(self.__data_buffer)
+        if buffer_len > 0:
+            self.__data_buffer = self.__data_buffer[size:]
+            if size > buffer_len:
+                self.advance_event_body(size - buffer_len)
+        else:
+            self.advance_event_body(size)

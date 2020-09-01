@@ -304,6 +304,10 @@ class XAPrepareLogEvent(BinLogEvent):
     pass
 
 
+class MariaAnnotateRowsEvent(BinLogEvent):
+        pass
+
+
 class MariaBinlogCheckpointEvent(BinLogEvent):
     def __init__(self, from_packet, event_size, table_map, ctl_connection, **kwargs):
         super(MariaBinlogCheckpointEvent, self).__init__(from_packet, event_size, table_map,
@@ -370,6 +374,30 @@ class MariaStartEncryptionEvent(BinLogEvent):
 
 
 class MariaQueryCompressedEvent(BinLogEvent):
+    pass
+
+
+class MariaWriteRowsCompressedEventV1(BinLogEvent):
+    pass
+
+
+class MariaUpdateRowsCompressedEventV1(BinLogEvent):
+    pass
+
+
+class MariaDeleteRowsCompressedEventV1(BinLogEvent):
+    pass
+
+
+class MariaWriteRowsCompressedEvent(BinLogEvent):
+    pass
+
+
+class MariaUpdateRowsCompressedEvent(BinLogEvent):
+    pass
+
+
+class MariaDeleteRowsCompressedEvent(BinLogEvent):
     pass
 
 
