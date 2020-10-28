@@ -220,6 +220,11 @@ class RowsEvent(BinLogEvent):
             return microsecond * (10 ** (6-column.fsp))
         return 0
 
+    @staticmethod
+    def charset_to_encoding(name):
+        charset = charset_by_name(name)
+        return charset.encoding if charset else name
+
     def __read_string(self, size, column):
         string = self.packet.read_length_coded_pascal_string(size)
         if column.character_set_name is not None:
